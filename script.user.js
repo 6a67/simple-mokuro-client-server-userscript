@@ -9,6 +9,7 @@
 // @grant GM_setValue
 // @grant GM_getValue
 // @grant GM_registerMenuCommand
+// @grant GM_unregisterMenuCommand
 // @grant GM_addStyle
 // @run-at document-start
 // ==/UserScript==
@@ -18,7 +19,6 @@
 
     const CONFIG = {
         server_url: 'http://localhost:8000',
-        auto_mode: GM_getValue('auto_mode', false),
     };
 
     function addCss() {
@@ -332,15 +332,13 @@
         urlObserver.observe(document.body, { childList: true, subtree: true });
     }
 
-    function toggleAutoMode() {
-        CONFIG.auto_mode = !CONFIG.auto_mode;
-        GM_setValue('auto_mode', CONFIG.auto_mode);
-        GM_notification(`Auto mode ${CONFIG.auto_mode ? 'enabled' : 'disabled'}`);
-        handleUrlChange();
+    function getAutoMode() {
+        const hostname = window.location.hostname;
+        return GM_getValue(`auto_mode_${btoa(hostname)}`, false);
     }
 
     function autoMode() {
-        if (!CONFIG.auto_mode) {
+        if (!getAutoMode()) {
             return;
         }
         const xpath = getBiggestImageXpath();
@@ -349,11 +347,39 @@
         }
     }
 
+    function toggleAutoMode(registerFn) {
+        const hostname = window.location.hostname;
+        GM_setValue(`auto_mode_${btoa(hostname)}`, !getAutoMode());
+        GM_notification(`Auto Mode ${getAutoMode() ? 'enabled' : 'disabled'}`);
+        if (getAutoMode()) {
+            handleUrlChange();
+        }
+        if (registerFn) {
+            registerFn();
+        }
+    }
+
+    function registerAutoModeMenuCommand() {
+        let menuCommandId = null;
+
+        return function updateMenuCommand() {
+            if (menuCommandId !== null) {
+                GM_unregisterMenuCommand(menuCommandId);
+            }
+            if (getAutoMode()) {
+                menuCommandId = GM_registerMenuCommand('Disable Auto Mode for this site', () => toggleAutoMode(updateMenuCommand));
+            } else {
+                menuCommandId = GM_registerMenuCommand('Enable Auto Mode for this site', () => toggleAutoMode(updateMenuCommand));
+            }
+        };
+    }
+
     function init() {
         addCss();
         initKeyListeners();
         addUrlChangeListener();
-        GM_registerMenuCommand('Toggle Auto Mode', toggleAutoMode);
+        const updateMenuCommand = registerAutoModeMenuCommand();
+        updateMenuCommand();
         autoMode();
     }
 
