@@ -82,7 +82,8 @@
                 biggestImage = images[i];
             }
         }
-        return biggestImage ? getXPath(biggestImage) : null;
+        const windowArea = window.innerWidth * window.innerHeight;
+        return biggestImage && biggestArea / windowArea >= 0.1 ? getXPath(biggestImage) : null;
     }
 
     async function getImageBytes(element) {
@@ -222,6 +223,7 @@
             console.error('Element not found for xpath:', xpath);
             return;
         }
+        console.log(element);
         getImageBytes(element)
             .then((bytes) => {
                 GM_xmlhttpRequest({
@@ -310,11 +312,8 @@
         elements.forEach((element) => {
             element.remove();
         });
-    }
-
-    function handleUrlChange() {
-        removeOCROverlays();
-        autoMode();
+        previousBiggestImageXpath = null;
+        previousBiggestImageSrc = null;
     }
 
     function addUrlChangeListener() {
@@ -340,14 +339,62 @@
         return GM_getValue(`auto_mode_${btoa(hostname)}`, false);
     }
 
+    let previousBiggestImageXpath = null;
+    let previousBiggestImageSrc = null;
+    let mutationObserver = null;
+
     function autoMode() {
         if (!getAutoMode()) {
+            // Disconnect the observer if auto mode is disabled
+            if (mutationObserver) {
+                mutationObserver.disconnect();
+                mutationObserver = null;
+            }
             return;
         }
         const xpath = getBiggestImageXpath();
         if (xpath) {
-            addOCROverlayToImage(xpath);
+            const biggestImageElement = getElementByXPath(xpath);
+            const src = biggestImageElement ? biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
+            if (xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
+                previousBiggestImageXpath = xpath;
+                previousBiggestImageSrc = src;
+                addOCROverlayToImage(xpath);
+            }
         }
+        observeBiggestImageChanges();
+    }
+
+    function observeBiggestImageChanges() {
+        if (mutationObserver) {
+            // Already observing
+            return;
+        }
+        mutationObserver = new MutationObserver(() => {
+            const xpath = getBiggestImageXpath();
+            const biggestImageElement = getElementByXPath(xpath);
+            const src = biggestImageElement ? biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
+            if (xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
+                previousBiggestImageXpath = xpath;
+                previousBiggestImageSrc = src;
+                handleUrlChange();
+            }
+        });
+        mutationObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['src', 'style'],
+        });
+    }
+
+    function handleUrlChange() {
+        if (mutationObserver) {
+            mutationObserver.disconnect();
+            mutationObserver = null;
+        }
+        removeOCROverlays();
+        autoMode();
     }
 
     function toggleAutoMode(registerFn) {
