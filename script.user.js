@@ -98,6 +98,9 @@
                 method: 'GET',
                 url: imgUrl,
                 responseType: 'arraybuffer',
+                headers: {
+                    'Referer': window.location.href,
+                },
                 onload: function (response) {
                     const bytes = new Uint8Array(response.response);
                     resolve(bytes);
