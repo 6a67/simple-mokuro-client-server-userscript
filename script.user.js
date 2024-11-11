@@ -223,7 +223,6 @@
             console.error('Element not found for xpath:', xpath);
             return;
         }
-        console.log(element);
         getImageBytes(element)
             .then((bytes) => {
                 GM_xmlhttpRequest({
