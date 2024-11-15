@@ -18,7 +18,7 @@
     'use strict';
 
     const CONFIG = {
-        server_url: 'http://localhost:8000',
+        server_url: 'http://localhost:4527',
     };
 
     function addCss() {
@@ -86,9 +86,34 @@
         return biggestImage && biggestArea / windowArea >= 0.1 ? getXPath(biggestImage) : null;
     }
 
+    function getBiggestVisibleImageXpath() {
+        const images = getAllImages();
+        let biggestImage = null;
+        let biggestArea = 0;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        for (let i = 0; i < images.length; i++) {
+            const img = images[i];
+            const rect = img.getBoundingClientRect();
+    
+            // Calculate the visible area of the image
+            const visibleWidth = Math.max(0, Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0));
+            const visibleHeight = Math.max(0, Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0));
+            const visibleArea = visibleWidth * visibleHeight;
+    
+            if (visibleArea > biggestArea) {
+                biggestArea = visibleArea;
+                biggestImage = img;
+            }
+        }
+        return biggestImage ? getXPath(biggestImage) : null;
+    }
+
     async function getImageBytes(element) {
         let imgUrl;
-        if (element.tagName === 'IMG') {
+        if (element.dataset.upscaled === 'true' && element.dataset.originalSrc) {
+            imgUrl = element.dataset.originalSrc; 
+        } else if (element.tagName === 'IMG') {
             imgUrl = element.src;
         } else {
             const bgImage = window.getComputedStyle(element).backgroundImage;
@@ -349,42 +374,29 @@
                 mutationObserver.disconnect();
                 mutationObserver = null;
             }
+            // Remove event listeners
+            window.removeEventListener('resize', handleAutoModeChange);
+            window.removeEventListener('scroll', handleAutoModeChange);
             return;
         }
-        const xpath = getBiggestImageXpath();
-        if (xpath) {
-            const biggestImageElement = getElementByXPath(xpath);
-            const src = biggestImageElement ? biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
-            if (xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
-                previousBiggestImageXpath = xpath;
-                previousBiggestImageSrc = src;
+        handleAutoModeChange();
+        // Add event listeners
+        window.addEventListener('resize', handleAutoModeChange);
+        window.addEventListener('scroll', handleAutoModeChange);
+    }
+    
+    function handleAutoModeChange() {
+        const xpath = getBiggestVisibleImageXpath();
+        const biggestImageElement = xpath ? getElementByXPath(xpath) : null;
+        const src = biggestImageElement ? biggestImageElement.dataset.originalSrc || biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
+        if (xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
+            removeOCROverlays();
+            previousBiggestImageXpath = xpath;
+            previousBiggestImageSrc = src;
+            if (xpath) {
                 addOCROverlayToImage(xpath);
             }
         }
-        observeBiggestImageChanges();
-    }
-
-    function observeBiggestImageChanges() {
-        if (mutationObserver) {
-            // Already observing
-            return;
-        }
-        mutationObserver = new MutationObserver(() => {
-            const xpath = getBiggestImageXpath();
-            const biggestImageElement = getElementByXPath(xpath);
-            const src = biggestImageElement ? biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
-            if (xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
-                previousBiggestImageXpath = xpath;
-                previousBiggestImageSrc = src;
-                handleUrlChange();
-            }
-        });
-        mutationObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['src', 'style'],
-        });
     }
 
     function handleUrlChange() {
@@ -393,19 +405,17 @@
             mutationObserver = null;
         }
         removeOCROverlays();
-        autoMode();
+        handleAutoModeChange();
     }
 
     function toggleAutoMode(registerFn) {
         const hostname = window.location.hostname;
         GM_setValue(`auto_mode_${btoa(hostname)}`, !getAutoMode());
         GM_notification(`Auto Mode ${getAutoMode() ? 'enabled' : 'disabled'}`);
-        if (getAutoMode()) {
-            handleUrlChange();
-        }
         if (registerFn) {
             registerFn();
         }
+        autoMode();
     }
 
     function registerAutoModeMenuCommand() {

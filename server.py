@@ -113,7 +113,7 @@ class OCRHandler(BaseHTTPRequestHandler):
             self.send_error(500, str(e))
 
 
-def run_server(port=8000):
+def run_server(port=4527):
     server_address = ("", port)
     httpd = HTTPServer(server_address, OCRHandler)
     print(f"Server running on port {port}")
