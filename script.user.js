@@ -111,7 +111,7 @@
 
     async function getImageBytes(element) {
         let imgUrl;
-        if (element.dataset.upscaled === 'true' && element.dataset.originalSrc) {
+        if (element.dataset.originalSrc) {
             imgUrl = element.dataset.originalSrc; 
         } else if (element.tagName === 'IMG') {
             imgUrl = element.src;
@@ -169,7 +169,12 @@
         container.style.pointerEvents = 'none';
         img.parentNode.insertBefore(container, img.nextSibling);
 
+        let isHandlingOutlinesUpdate = false;
+
         function updateOutlines() {
+            if (isHandlingOutlinesUpdate) return;
+            isHandlingOutlinesUpdate = true;
+
             const parent = img.offsetParent || img.parentElement;
             const parentRect = parent?.getBoundingClientRect();
             const imgRect = img.getBoundingClientRect();
@@ -229,6 +234,8 @@
                 outline.id = id;
                 container.appendChild(outline);
             });
+
+            isHandlingOutlinesUpdate = false;
         }
 
         img.onload = updateOutlines;
@@ -240,6 +247,11 @@
         window.addEventListener('resize', updateOutlines);
         window.addEventListener('zoom', updateOutlines);
         window.addEventListener('scroll', updateOutlines);
+        document.querySelectorAll('*').forEach(element => {
+            if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+                element.addEventListener('scroll', updateOutlines);
+            }
+        });
     }
 
     function addOCROverlayToImage(xpath) {
@@ -367,6 +379,7 @@
     let previousBiggestImageSrc = null;
     let mutationObserver = null;
 
+    let attachedScrollElements = new Set();
     function autoMode() {
         if (!getAutoMode()) {
             // Disconnect the observer if auto mode is disabled
@@ -377,15 +390,29 @@
             // Remove event listeners
             window.removeEventListener('resize', handleAutoModeChange);
             window.removeEventListener('scroll', handleAutoModeChange);
+            attachedScrollElements.forEach(element => {
+                element.removeEventListener('scroll', handleAutoModeChange);
+            });
             return;
         }
         handleAutoModeChange();
         // Add event listeners
         window.addEventListener('resize', handleAutoModeChange);
         window.addEventListener('scroll', handleAutoModeChange);
+        document.querySelectorAll('*').forEach(element => {
+            if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+                element.addEventListener('scroll', handleAutoModeChange);
+                attachedScrollElements.add(element);
+            }
+        });
     }
     
+    let isHandlingAutoModeChange = false;
+
     function handleAutoModeChange() {
+        if (isHandlingAutoModeChange) return;
+        isHandlingAutoModeChange = true;
+
         const xpath = getBiggestVisibleImageXpath();
         const biggestImageElement = xpath ? getElementByXPath(xpath) : null;
         const src = biggestImageElement ? biggestImageElement.dataset.originalSrc || biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
@@ -397,6 +424,8 @@
                 addOCROverlayToImage(xpath);
             }
         }
+
+        isHandlingAutoModeChange = false;
     }
 
     function handleUrlChange() {
@@ -405,7 +434,7 @@
             mutationObserver = null;
         }
         removeOCROverlays();
-        handleAutoModeChange();
+        autoMode();
     }
 
     function toggleAutoMode(registerFn) {
