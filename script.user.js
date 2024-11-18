@@ -70,22 +70,6 @@
         return document.querySelectorAll('img, [style*="background-image"]');
     }
 
-    function getBiggestImageXpath() {
-        const images = getAllImages();
-        let biggestImage = null;
-        let biggestArea = 0;
-        for (let i = 0; i < images.length; i++) {
-            const { actualWidth, actualHeight } = getActualImageSize(images[i]);
-            const area = actualWidth * actualHeight;
-            if (area > biggestArea) {
-                biggestArea = area;
-                biggestImage = images[i];
-            }
-        }
-        const windowArea = window.innerWidth * window.innerHeight;
-        return biggestImage && biggestArea / windowArea >= 0.1 ? getXPath(biggestImage) : null;
-    }
-
     function getBiggestVisibleImageXpath() {
         const images = getAllImages();
         let biggestImage = null;
@@ -102,11 +86,15 @@
             const visibleArea = visibleWidth * visibleHeight;
     
             if (visibleArea > biggestArea) {
+                console.log('Visible area:', visibleArea);
+                console.log('Image:', img);
+                console.log('Rect:', rect);
                 biggestArea = visibleArea;
                 biggestImage = img;
             }
         }
-        return biggestImage ? getXPath(biggestImage) : null;
+        const windowArea = window.innerWidth * window.innerHeight;
+        return biggestImage && biggestArea / windowArea >= 0.1 ? getXPath(biggestImage) : null;
     }
 
     async function getImageBytes(element) {
@@ -416,7 +404,7 @@
         const xpath = getBiggestVisibleImageXpath();
         const biggestImageElement = xpath ? getElementByXPath(xpath) : null;
         const src = biggestImageElement ? biggestImageElement.dataset.originalSrc || biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
-        if (xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
+        if (xpath && xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
             removeOCROverlays();
             previousBiggestImageXpath = xpath;
             previousBiggestImageSrc = src;
