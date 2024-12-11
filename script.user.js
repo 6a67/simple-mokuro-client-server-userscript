@@ -370,20 +370,20 @@
             getComputedStyle(element).backgroundImage !== 'none'
         );
     }
-    
+
     function checkForImagesRecursively(element) {
         if (!element) return false;
-        
+
         if (isImageElement(element)) {
             return true;
         }
-        
+
         for (const child of element.children) {
             if (checkForImagesRecursively(child)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -394,7 +394,6 @@
             img.removeEventListener('load', () => {});
         });
     }
-    
 
     let previousBiggestImageXpath = null;
     let previousBiggestImageSrc = null;
