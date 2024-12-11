@@ -363,6 +363,39 @@
         return GM_getValue(`auto_mode_${btoa(hostname)}`, false);
     }
 
+    function isImageElement(element) {
+        return (
+            element.tagName === 'IMG' ||
+            (element.style && element.style.backgroundImage && element.style.backgroundImage !== 'none') ||
+            getComputedStyle(element).backgroundImage !== 'none'
+        );
+    }
+    
+    function checkForImagesRecursively(element) {
+        if (!element) return false;
+        
+        if (isImageElement(element)) {
+            return true;
+        }
+        
+        for (const child of element.children) {
+            if (checkForImagesRecursively(child)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    function attachImageLoadListener(img) {
+        img.addEventListener('load', () => {
+            console.log('Image loaded:', img);
+            handleAutoModeChange();
+            img.removeEventListener('load', () => {});
+        });
+    }
+    
+
     let previousBiggestImageXpath = null;
     let previousBiggestImageSrc = null;
     let mutationObserver = null;
@@ -393,16 +426,32 @@
                 attachedScrollElements.add(element);
             }
         });
-        // when img src or background-image changes trigger OCR
         mutationObserver = new MutationObserver((mutations) => {
             console.log('Mutations:', mutations);
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'style')) {
+                    console.log('Image src or style changed:', mutation.target);
                     handleAutoModeChange();
+                    if (mutation.target.tagName === 'IMG') {
+                        attachImageLoadListener(mutation.target);
+                    }
+                } else if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            if (node.tagName === 'IMG') {
+                                attachImageLoadListener(node);
+                            }
+                            if (checkForImagesRecursively(node)) {
+                                console.log('New image found in:', node);
+                                handleAutoModeChange();
+                                node.querySelectorAll('img').forEach(attachImageLoadListener);
+                            }
+                        }
+                    });
                 }
             });
         });
-        mutationObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['src', 'style'] });
+        mutationObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'style'] });
     }
 
     let isHandlingAutoModeChange = false;
@@ -468,6 +517,7 @@
         addUrlChangeListener();
         const updateMenuCommand = registerAutoModeMenuCommand();
         updateMenuCommand();
+        document.querySelectorAll('img').forEach(attachImageLoadListener);
         autoMode();
     }
 
