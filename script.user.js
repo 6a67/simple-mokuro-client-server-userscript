@@ -79,12 +79,12 @@
         for (let i = 0; i < images.length; i++) {
             const img = images[i];
             const rect = img.getBoundingClientRect();
-    
+
             // Calculate the visible area of the image
             const visibleWidth = Math.max(0, Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0));
             const visibleHeight = Math.max(0, Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0));
             const visibleArea = visibleWidth * visibleHeight;
-    
+
             if (visibleArea > biggestArea) {
                 console.log('Visible area:', visibleArea);
                 console.log('Image:', img);
@@ -100,7 +100,7 @@
     async function getImageBytes(element) {
         let imgUrl;
         if (element.dataset.originalSrc) {
-            imgUrl = element.dataset.originalSrc; 
+            imgUrl = element.dataset.originalSrc;
         } else if (element.tagName === 'IMG') {
             imgUrl = element.src;
         } else {
@@ -235,7 +235,7 @@
         window.addEventListener('resize', updateOutlines);
         window.addEventListener('zoom', updateOutlines);
         window.addEventListener('scroll', updateOutlines);
-        document.querySelectorAll('*').forEach(element => {
+        document.querySelectorAll('*').forEach((element) => {
             if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
                 element.addEventListener('scroll', updateOutlines);
             }
@@ -378,7 +378,7 @@
             // Remove event listeners
             window.removeEventListener('resize', handleAutoModeChange);
             window.removeEventListener('scroll', handleAutoModeChange);
-            attachedScrollElements.forEach(element => {
+            attachedScrollElements.forEach((element) => {
                 element.removeEventListener('scroll', handleAutoModeChange);
             });
             return;
@@ -387,7 +387,7 @@
         // Add event listeners
         window.addEventListener('resize', handleAutoModeChange);
         window.addEventListener('scroll', handleAutoModeChange);
-        document.querySelectorAll('*').forEach(element => {
+        document.querySelectorAll('*').forEach((element) => {
             if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
                 element.addEventListener('scroll', handleAutoModeChange);
                 attachedScrollElements.add(element);
@@ -404,7 +404,7 @@
         });
         mutationObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['src', 'style'] });
     }
-    
+
     let isHandlingAutoModeChange = false;
 
     function handleAutoModeChange() {
@@ -413,8 +413,10 @@
 
         const xpath = getBiggestVisibleImageXpath();
         const biggestImageElement = xpath ? getElementByXPath(xpath) : null;
-        const src = biggestImageElement ? biggestImageElement.dataset.originalSrc || biggestImageElement.src || biggestImageElement.style.backgroundImage : null;
-        if (xpath && xpath !== previousBiggestImageXpath || src !== previousBiggestImageSrc) {
+        const src = biggestImageElement
+            ? biggestImageElement.dataset.originalSrc || biggestImageElement.src || biggestImageElement.style.backgroundImage
+            : null;
+        if ((xpath && xpath !== previousBiggestImageXpath) || src !== previousBiggestImageSrc) {
             removeOCROverlays();
             previousBiggestImageXpath = xpath;
             previousBiggestImageSrc = src;
