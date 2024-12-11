@@ -393,6 +393,16 @@
                 attachedScrollElements.add(element);
             }
         });
+        // when img src or background-image changes trigger OCR
+        mutationObserver = new MutationObserver((mutations) => {
+            console.log('Mutations:', mutations);
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'style')) {
+                    handleAutoModeChange();
+                }
+            });
+        });
+        mutationObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['src', 'style'] });
     }
     
     let isHandlingAutoModeChange = false;
