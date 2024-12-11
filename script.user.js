@@ -86,9 +86,9 @@
             const visibleArea = visibleWidth * visibleHeight;
 
             if (visibleArea > biggestArea) {
-                console.log('Visible area:', visibleArea);
-                console.log('Image:', img);
-                console.log('Rect:', rect);
+                // console.log('Visible area:', visibleArea);
+                // console.log('Image:', img);
+                // console.log('Rect:', rect);
                 biggestArea = visibleArea;
                 biggestImage = img;
             }
@@ -389,7 +389,7 @@
 
     function attachImageLoadListener(img) {
         img.addEventListener('load', () => {
-            console.log('Image loaded:', img);
+            // console.log('Image loaded:', img);
             handleAutoModeChange();
             img.removeEventListener('load', () => {});
         });
@@ -426,10 +426,10 @@
             }
         });
         mutationObserver = new MutationObserver((mutations) => {
-            console.log('Mutations:', mutations);
+            // console.log('Mutations:', mutations);
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && (mutation.attributeName === 'src' || mutation.attributeName === 'style')) {
-                    console.log('Image src or style changed:', mutation.target);
+                    // console.log('Image src or style changed:', mutation.target);
                     handleAutoModeChange();
                     if (mutation.target.tagName === 'IMG') {
                         attachImageLoadListener(mutation.target);
@@ -441,7 +441,7 @@
                                 attachImageLoadListener(node);
                             }
                             if (checkForImagesRecursively(node)) {
-                                console.log('New image found in:', node);
+                                // console.log('New image found in:', node);
                                 handleAutoModeChange();
                                 node.querySelectorAll('img').forEach(attachImageLoadListener);
                             }
