@@ -415,6 +415,7 @@
             });
             return;
         }
+        document.querySelectorAll('img').forEach(attachImageLoadListener);
         handleAutoModeChange();
         // Add event listeners
         window.addEventListener('resize', handleAutoModeChange);
@@ -516,7 +517,6 @@
         addUrlChangeListener();
         const updateMenuCommand = registerAutoModeMenuCommand();
         updateMenuCommand();
-        document.querySelectorAll('img').forEach(attachImageLoadListener);
         autoMode();
     }
 
