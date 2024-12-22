@@ -157,52 +157,38 @@
         container.style.pointerEvents = 'none';
         img.parentNode.insertBefore(container, img.nextSibling);
 
-        let isHandlingOutlinesUpdate = false;
+        let isHandlingUpdate = false;
 
-        function updateOutlines() {
-            if (isHandlingOutlinesUpdate) return;
-            isHandlingOutlinesUpdate = true;
+        function calculateBlockDimensions(block) {
+            const [x1, y1, x2, y2] = block.box;
+            return {
+                relX: x1 / image_data.img_width,
+                relY: y1 / image_data.img_height,
+                relWidth: (x2 - x1) / image_data.img_width,
+                relHeight: (y2 - y1) / image_data.img_height,
+            };
+        }
 
-            const parent = img.offsetParent || img.parentElement;
-            const parentRect = parent?.getBoundingClientRect();
-            const imgRect = img.getBoundingClientRect();
-            const relativeLeft = imgRect.left - (parentRect?.left || 0);
-            const relativeTop = imgRect.top - (parentRect?.top || 0);
-            container.style.left = `${relativeLeft}px`;
-            container.style.top = `${relativeTop}px`;
-
-            const style = window.getComputedStyle(img);
-            const width = parseInt(style.width);
-            const height = parseInt(style.height);
-            if (width > 0) container.style.width = `${width}px`;
-            if (height > 0) container.style.height = `${height}px`;
-
-            const { actualWidth, actualHeight } = getActualImageSize(img);
+        function createTextElements() {
+            const { actualWidth } = getActualImageSize(img);
             const scale_factor = actualWidth / image_data.img_width;
 
             image_data.blocks.forEach((block, i) => {
                 const id = btoa(xpath_selector) + i;
-                let outline = document.getElementById(id) || document.createElement('div');
-                const [x1, y1, x2, y2] = block.box;
-                const relX = x1 / image_data.img_width;
-                const relY = y1 / image_data.img_height;
-                const relWidth = (x2 - x1) / image_data.img_width;
-                const relHeight = (y2 - y1) / image_data.img_height;
-
+                let outline = document.createElement('div');
                 outline.className = 'text-outline';
                 outline.style.position = 'absolute';
-                outline.style.top = `${relY * 100}%`;
-                outline.style.right = `${(1 - relX - relWidth) * 100}%`;
-                outline.style.width = `${relWidth * 100}%`;
-                outline.style.height = `${relHeight * 100}%`;
+                outline.id = id;
+                outline.style.overflow = 'visible';
 
                 const textDiv = document.createElement('div');
                 textDiv.className = 'bubble-text';
-                let text = block.lines.join('\n');
-                textDiv.textContent = text;
+                textDiv.textContent = block.lines.join('\n');
                 textDiv.style.fontSize = `${block.font_size * scale_factor}px`;
                 textDiv.style.whiteSpace = 'pre';
                 textDiv.style.overflow = 'visible';
+                textDiv.style.position = 'absolute';
+                textDiv.lang = 'ja';
 
                 if (block.vertical) {
                     textDiv.style.writingMode = 'vertical-rl';
@@ -213,33 +199,67 @@
                     textDiv.style.bottom = '0%';
                     textDiv.style.left = '0%';
                 }
-                textDiv.style.position = 'absolute';
-                textDiv.lang = 'ja';
 
-                outline.innerHTML = '';
                 outline.appendChild(textDiv);
-                outline.style.overflow = 'visible';
-                outline.id = id;
                 container.appendChild(outline);
             });
-
-            isHandlingOutlinesUpdate = false;
         }
 
-        img.onload = updateOutlines;
-        const resizeObserver = new ResizeObserver(updateOutlines);
-        resizeObserver.observe(img);
-        const mutationObserver = new MutationObserver(updateOutlines);
-        mutationObserver.observe(img, { attributes: true });
-        mutationObserver.observe(img.parentNode, { attributes: true });
-        window.addEventListener('resize', updateOutlines);
-        window.addEventListener('zoom', updateOutlines);
-        window.addEventListener('scroll', updateOutlines);
-        document.querySelectorAll('*').forEach((element) => {
-            if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
-                element.addEventListener('scroll', updateOutlines);
-            }
-        });
+        function updateElementPositions() {
+            if (isHandlingUpdate) return;
+            isHandlingUpdate = true;
+
+            const parent = img.offsetParent || img.parentElement;
+            const parentRect = parent?.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+
+            // Update container position
+            container.style.left = `${imgRect.left - (parentRect?.left || 0)}px`;
+            container.style.top = `${imgRect.top - (parentRect?.top || 0)}px`;
+
+            // Update container size
+            const style = window.getComputedStyle(img);
+            const width = parseInt(style.width);
+            const height = parseInt(style.height);
+            if (width > 0) container.style.width = `${width}px`;
+            if (height > 0) container.style.height = `${height}px`;
+
+            // Update block positions
+            image_data.blocks.forEach((block, i) => {
+                const outline = document.getElementById(btoa(xpath_selector) + i);
+                if (!outline) return;
+
+                const { relX, relY, relWidth, relHeight } = calculateBlockDimensions(block);
+                outline.style.top = `${relY * 100}%`;
+                outline.style.right = `${(1 - relX - relWidth) * 100}%`;
+                outline.style.width = `${relWidth * 100}%`;
+                outline.style.height = `${relHeight * 100}%`;
+            });
+
+            isHandlingUpdate = false;
+        }
+
+        function setupUpdateListeners() {
+            const events = ['load', 'resize', 'zoom', 'scroll'];
+            events.forEach((event) => window.addEventListener(event, updateElementPositions));
+
+            const resizeObserver = new ResizeObserver(updateElementPositions);
+            resizeObserver.observe(img);
+
+            const mutationObserver = new MutationObserver(updateElementPositions);
+            mutationObserver.observe(img, { attributes: true });
+            mutationObserver.observe(img.parentNode, { attributes: true });
+
+            document.querySelectorAll('*').forEach((element) => {
+                if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+                    element.addEventListener('scroll', updateElementPositions);
+                }
+            });
+        }
+
+        createTextElements();
+        setupUpdateListeners();
+        updateElementPositions();
     }
 
     function addOCROverlayToImage(xpath) {
