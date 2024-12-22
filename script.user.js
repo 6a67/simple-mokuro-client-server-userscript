@@ -33,6 +33,7 @@
             pointer-events: auto;
             text-align: left;
             vertical-align: top;
+            user-select: text;
         }
         .bubble-text:hover {
             opacity: 1.0;
