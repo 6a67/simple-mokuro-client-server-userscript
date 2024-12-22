@@ -260,6 +260,9 @@
         createTextElements();
         setupUpdateListeners();
         updateElementPositions();
+
+        const event = new CustomEvent('mokuro-browser-to-server.ocr-overlayed', { detail: { targetImg: img, overlayContainer: container } }); 
+        document.dispatchEvent(event);
     }
 
     function addOCROverlayToImage(xpath) {
