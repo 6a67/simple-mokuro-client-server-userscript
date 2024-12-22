@@ -261,7 +261,7 @@
         setupUpdateListeners();
         updateElementPositions();
 
-        const event = new CustomEvent('mokuro-browser-to-server.ocr-overlayed', { detail: { targetImg: img, overlayContainer: container } }); 
+        const event = new CustomEvent('mokuro-browser-to-server.ocr-overlayed', { detail: { targetImg: img, overlayContainer: container }, bubbles: true });
         document.dispatchEvent(event);
     }
 
