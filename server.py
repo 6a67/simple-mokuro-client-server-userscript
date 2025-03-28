@@ -8,7 +8,7 @@ from PIL import Image
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import hashlib
-
+import argparse
 
 # https://github.com/kha-white/mokuro/blob/master/mokuro/manga_page_ocr.py
 class OCRD(MangaPageOcr):
@@ -77,14 +77,12 @@ class OCR:
         result = self.mpocr(image_bytes)
         return result
 
-
-ocr = OCR()
-
-
 class OCRHandler(BaseHTTPRequestHandler):
     cache_location = Path("_cache")
 
     def do_POST(self):
+        init_ocr()
+
         content_length = int(self.headers["Content-Length"])
         image_bytes = self.rfile.read(content_length)
 
@@ -113,6 +111,14 @@ class OCRHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_error(500, str(e))
 
+ocr = None
+
+def init_ocr():
+    global ocr
+    if ocr is None:
+        ocr = OCR()
+        print("OCR model initialized")
+
 
 def run_server(port=4527):
     server_address = ("", port)
@@ -122,4 +128,21 @@ def run_server(port=4527):
 
 
 if __name__ == "__main__":
-    run_server()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=4527,
+        help="Port number for the server to listen on (default: 4527)",
+    )
+
+    parser.add_argument(
+        "--preload",
+        action="store_true",
+        help="Preload the OCR model (default: False)",
+    )
+    args = parser.parse_args()
+    if args.preload:
+        init_ocr()
+
+    run_server(args.port)
