@@ -90,7 +90,8 @@ class OCRHandler(BaseHTTPRequestHandler):
 
         try:
             sha256 = hashlib.sha256(image_bytes).hexdigest()
-            cache_path = self.cache_location / f"{sha256}.json"
+            size = len(image_bytes)
+            cache_path = self.cache_location / f"{sha256}_{size}.json"
             if cache_path.exists():
                 with open(cache_path, "r", encoding="utf-8") as f:
                     result = json.load(f)
